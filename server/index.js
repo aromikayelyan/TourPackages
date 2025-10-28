@@ -12,6 +12,12 @@ import rateSystem from './routes/rateSystem.js'
 
 // const upload = multer({ dest: 'uploads/' })
 
+const whitelist = new Set([
+  'http://localhost:5500',
+  'http://127.0.0.1:5500',
+  'http://192.168.0.104:5500'
+])
+
 
 const PORT = process.env.PORT || 4400
 
@@ -22,15 +28,18 @@ app.use('/uploads', (req, res, next) => {
 	next();
 }, express.static(path.join(__dirname, 'uploads')))
 
+app.use(cors({
+	origin: '*', // временно разрешим всем (для теста)
+	methods: ['GET', 'POST', 'PUT', 'DELETE'],
+	allowedHeaders: ['Content-Type', 'Authorization'],
+}))
+
+
 app.use(express.json())
 app.use('/packages', packageRoute)
 app.use('/rating', rateSystem)
 
 app.use(express.urlencoded({ extended: true }))
-app.use(cors({
-	origin: 'http://192.168.0.104:5173', // укажи порт фронтенда!
-	credentials: true
-  }))
 
 
 

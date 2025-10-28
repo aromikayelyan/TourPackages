@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TravelLab — туры, отзывы и бронирование мест</title>
+  <meta name="description" content="Одностраничный фронтенд для туристического проекта: список туров, детали, отзывы без регистрации, добавление туров, удаление, интеграция с Aviasales." />
+  <style>
+    :root{
+      --bg:#0f1221;          /* тёмный фон */
+      --card:#171a2b;        /* фон карточек */
+      --muted:#8b90a7;       /* вторичный текст */
+      --text:#e8ebff;        /* основной текст */
+      --brand:#7c5cff;       /* акцент */
+      --brand-2:#3bd9d9;     /* второй акцент */
+      --danger:#ff6363;
+      --success:#41d689;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 18px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:radial-gradient(1200px 1200px at 110% -10%, rgba(124,92,255,.25), transparent 45%),
+                         radial-gradient(900px 900px at -10% 110%, rgba(59,217,217,.2), transparent 45%),
+                         var(--bg);
+         color:var(--text);font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial}
+    a{color:inherit}
+    .container{max-width:1100px;margin:0 auto;padding:24px}
+
+    /* Topbar */
+    .topbar{position:sticky;top:0;z-index:20;background:rgba(15,18,33,.7);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.06)}
+    .topbar-inner{display:flex;align-items:center;gap:16px;justify-content:space-between;padding:14px 24px}
+    .logo{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.3px}
+    .logo .dot{width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--brand-2))}
+    nav a{padding:10px 14px;border-radius:10px;color:var(--muted);text-decoration:none}
+    nav a.active, nav a:hover{color:var(--text);background:rgba(124,92,255,.16)}
+
+    /* Blocks */
+    .hero{display:grid;gap:12px;padding:28px 0 10px}
+    .hero h1{font-size:clamp(26px,5vw,38px);margin:0}
+    .hero p{margin:0;color:var(--muted)}
+
+    .toolbar{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0}
+    .input, select{background:#12162a;border:1px solid rgba(255,255,255,.08);color:var(--text);padding:10px 12px;border-radius:12px;outline:none;min-width:200px}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:linear-gradient(180deg,rgba(124,92,255,.22),rgba(124,92,255,.12));color:var(--text);cursor:pointer;transition:transform .08s ease;}
+    .btn:hover{transform:translateY(-1px)}
+    .btn.secondary{background:#12162a}
+    .btn.danger{background:linear-gradient(180deg, rgba(255,99,99,.22), rgba(255,99,99,.12));border-color:rgba(255,99,99,.25)}
+    .btn.success{background:linear-gradient(180deg, rgba(65,214,137,.22), rgba(65,214,137,.12));border-color:rgba(65,214,137,.25)}
+
+    .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
+    .card .media{position:relative;aspect-ratio:16/10;overflow:hidden}
+    .card img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .6s ease}
+    .card:hover img{transform:scale(1.06)}
+    .badge{position:absolute;left:12px;top:12px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.15);padding:6px 10px;border-radius:999px;font-size:12px}
+    .card .content{padding:14px 14px 16px;display:flex;flex-direction:column;gap:8px}
+    .title{font-weight:700}
+    .muted{color:var(--muted)}
+
+    .section{margin:28px 0}
+    .panel{background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,0));border:1px solid rgba(255,255,255,.1);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+
+    .split{display:grid;gap:20px;grid-template-columns:1.2fr .8fr}
+    @media (max-width:860px){.split{grid-template-columns:1fr}}
+
+    .gallery{display:grid;gap:10px;grid-template-columns:repeat(3,1fr)}
+    .gallery img{width:100%;height:160px;object-fit:cover;border-radius:12px;border:1px solid rgba(255,255,255,.08)}
+
+    .review{padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(255,255,255,.03)}
+
+    .empty{padding:20px;text-align:center;color:var(--muted)}
+
+    .footer{margin:40px 0 20px;color:var(--muted);text-align:center;font-size:14px}
+
+    .chips{display:flex;gap:8px;flex-wrap:wrap}
+    .chip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);padding:6px 10px;border-radius:999px;font-size:12px}
+
+    .warning{color:var(--danger)}
+    .hint{font-size:12px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner container">
+      <div class="logo" onclick="Router.go('/')" style="cursor:pointer">
+        <span class="dot"></span>
+        <span>TravelLab</span>
+      </div>
+      <nav>
+        <a href="#/" data-link>Туры</a>
+        <a href="#/admin" data-link>Добавить тур</a>
+        <!-- <a href="#/about" data-link>О проекте</a> -->
+      </nav>
+    </div>
+  </header>
+
+  <main id="app" class="container"></main>
+
+  <footer class="footer container">
+    Сделано с ❤️. Вопросы по интеграции — внутри страницы «О проекте».
+  </footer>
+
+<script>
+// =========================
+// ⚙️ НАСТРОЙКА API
+// =========================
+// ВАЖНО: подставь правильные basePath-ы так, как они смонтированы в бэкенде
+// Пример: если твой роутер с турами подключён как app.use('/api/tours', router)
+// то TOURS_BASE = 'http://localhost:3000/api/tours'
+
+const CONFIG = {
+  TOURS_BASE: 'http://localhost:4400/packages', // ⚠️ ПОДСТАВЬ СВОЙ ПУТЬ
+  RATES_BASE: 'http://localhost:4400/rating',  // ⚠️ ПОДСТАВЬ СВОЙ ПУТЬ
+  CURRENCY: '₽',
+  AFFILIATE: {
+    // Placeholders для Aviasales (замени на свои метки)
+    PARTNER_ID: 'YOUR_PARTNER_ID',
+    UTM: 'utm_source=travellab&utm_medium=referral&utm_campaign=tour',
+    URL: 'https://www.aviasales.ru' // можно сменить на свой white-label домен
+  }
+}
+
+// Универсальный fetch с обработкой ошибок
+async function apiFetch(url, options={}){
+  try{
+    const res = await fetch(url, options)
+    if(!res.ok){
+      const txt = await res.text().catch(()=> '')
+      throw new Error(txt || `HTTP ${res.status}`)
+    }
+    const ct = res.headers.get('content-type')||''
+    return ct.includes('application/json') ? res.json() : res.text()
+  }catch(e){
+    console.error('API error:', e)
+    throw e
+  }
+}
+
+// =========================
+// 🧭 Мини-роутер (hash-based)
+// =========================
+const Router = {
+  routes: {},
+  init(){
+    window.addEventListener('hashchange', ()=> this.resolve())
+    this.resolve()
+  },
+  register(path, handler){ this.routes[path] = handler },
+  go(path){ location.hash = '#' + path },
+  // простейший matcher вида "/tour/:id"
+  resolve(){
+    const hash = location.hash.slice(1) || '/'
+    const [path, ...rest] = hash.split('?')
+
+    for(const pattern in this.routes){
+      const params = {}
+      const pSeg = pattern.split('/').filter(Boolean)
+      const hSeg = path.split('/').filter(Boolean)
+      if(pSeg.length !== hSeg.length) continue
+      let ok = true
+      pSeg.forEach((seg,i)=>{
+        if(seg.startsWith(':')) params[seg.slice(1)] = decodeURIComponent(hSeg[i])
+        else if(seg !== hSeg[i]) ok=false
+      })
+      if(ok){
+        this.routes[pattern](params)
+        this.highlightNav(path)
+        return
+      }
+    }
+    // 404
+    document.getElementById('app').innerHTML = `<div class="section"><div class="panel"><h2>Страница не найдена</h2><p class="muted">Проверь адрес в адресной строке.</p></div></div>`
+  },
+  highlightNav(path){
+    document.querySelectorAll('nav a').forEach(a=>{
+      const href = a.getAttribute('href')||''
+      const p = href.replace('#','')
+      a.classList.toggle('active', p === '#' + path || (p==='#/' && path==='/'))
+    })
+  }
+}
+
+// =========================
+// 🖼️ РЕНДЕРЫ СТРАНИЦ
+// =========================
+
+Router.register('/', renderHome)
+Router.register('/tour/:id', ({id})=> renderTour(id))
+Router.register('/admin', renderAdmin)
+// Router.register('/about', renderAbout)s
+
+async function renderHome(){
+  const app = document.getElementById('app')
+  app.innerHTML = `
+    <section class="hero">
+      <h1>Подбери идеальный тур</h1>
+      <p>Смотри предложения, изучай детали и оставляй отзывы без регистрации.</p>
+      <div class="toolbar">
+        <input id="q" class="input" placeholder="Поиск по названию…" />
+        <select id="sort">
+          <option value="popular">Популярные</option>
+          <option value="cheap">Сначала дешёвые</option>
+          <option value="expensive">Сначала дорогие</option>
+          <option value="recent">По дате начала</option>
+        </select>
+        <button class="btn" id="refreshBtn">Обновить</button>
+        <button class="btn secondary" onclick="Router.go('/admin')">+ Добавить тур</button>
+      </div>
+    </section>
+    <section class="section">
+      <div id="cards" class="grid"></div>
+    </section>
+  `
+
+  const q = document.getElementById('q')
+  const sortSel = document.getElementById('sort')
+  const cards = document.getElementById('cards')
+  const refreshBtn = document.getElementById('refreshBtn')
+
+  async function load(){
+    cards.innerHTML = `<div class="panel">Загрузка…</div>`
+    try{
+      const data = await apiFetch(`${CONFIG.TOURS_BASE}/`)
+      let list = Array.isArray(data) ? data : []
+      // поиск
+      const query = (q.value||'').trim().toLowerCase()
+      if(query) list = list.filter(t => (t.name||'').toLowerCase().includes(query))
+      // сортировка
+      const sort = sortSel.value
+      list.sort((a,b)=>{
+        if(sort==='cheap') return (a.price||0)-(b.price||0)
+        if(sort==='expensive') return (b.price||0)-(a.price||0)
+        if(sort==='recent') return new Date(a.startDate||0) - new Date(b.startDate||0)
+        return (b.forSlide?1:0)-(a.forSlide?1:0) // popular proxy
+      })
+
+      if(!list.length){
+        cards.innerHTML = `<div class='empty panel'>Ничего не найдено. Попробуйте изменить запрос.</div>`
+        return
+      }
+
+      cards.innerHTML = list.map(item=> TourCard(item)).join('')
+      // attach listeners to cards
+      cards.querySelectorAll('[data-open]').forEach(btn=>{
+        btn.addEventListener('click', ()=> Router.go(`/tour/${btn.getAttribute('data-open')}`))
+      })
+    }catch(e){
+      cards.innerHTML = `<div class='panel warning'>Ошибка загрузки туров: ${e.message}</div>`
+    }
+  }
+
+  q.addEventListener('input', debounce(load, 250))
+  sortSel.addEventListener('change', load)
+  refreshBtn.addEventListener('click', load)
+  load()
+}
+
+function TourCard(t){
+  const cover = (t.images && t.images[0]) || placeholder()
+  const price = t.price ? `${t.price.toLocaleString()} ${CONFIG.CURRENCY}` : 'Цена по запросу'
+  const seats = t.availableSeats ?? '—'
+  const dur = t.duration || '—'
+  const badge = t.forSlide ? 'Хит' : 'Тур'
+  return `
+    <article class="card">
+      <div class="media">
+        <img src="${cover}" alt="${escapeHtml(t.name||'Тур')}" />
+        <span class="badge">${badge}</span>
+      </div>
+      <div class="content">
+        <div class="title">${escapeHtml(t.name||'Без названия')}</div>
+        <div class="muted">Длительность: ${escapeHtml(dur)} • Свободных мест: ${escapeHtml(String(seats))}</div>
+        <div class="chips">
+          ${t.startDate ? `<span class='chip'>Старт: ${fmtDate(t.startDate)}</span>`:''}
+          ${t.endDate ? `<span class='chip'>Финиш: ${fmtDate(t.endDate)}</span>`:''}
+          <span class="chip">${price}</span>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:10px">
+          <button class="btn" data-open="${t.uid}">Подробнее</button>
+          <button class="btn danger" onclick="handleDelete('${t.uid}')">Удалить</button>
+        </div>
+      </div>
+    </article>
+  `
+}
+
+async function handleDelete(uid){
+  if(!confirm('Удалить тур?')) return
+  try{
+    await apiFetch(`${CONFIG.TOURS_BASE}/${encodeURIComponent(uid)}`, { method:'DELETE' })
+    alert('Удалено')
+    Router.go('/')
+    // перерисуем листинг
+    renderHome()
+  }catch(e){
+    alert('Ошибка удаления: ' + e.message)
+  }
+}
+
+async function renderTour(uid){
+  const app = document.getElementById('app')
+  app.innerHTML = `<div class='section'><div class='panel'>Загрузка…</div></div>`
+  try{
+    const payload = await apiFetch(`${CONFIG.TOURS_BASE}/${encodeURIComponent(uid)}`)
+    const [t, comments] = payload || []
+    if(!t) throw new Error('Тур не найден')
+
+    const gallery = (t.images||[]).map(src=> `<img src="${src}" alt="img"/>`).join('') || `<div class='empty'>Нет изображений</div>`
+    const avg = (comments||[]).length ? (comments.reduce((s,c)=> s + (c.rate||0),0) / comments.length).toFixed(1) : '—'
+
+    app.innerHTML = `
+      <section class="section">
+        <div class="split">
+          <div class="panel">
+            <div class="gallery">${gallery}</div>
+            <h2 style="margin:12px 4px 8px">${escapeHtml(t.name||'Без названия')}</h2>
+            <p class="muted" style="white-space:pre-wrap">${escapeHtml(t.description||'Описание скоро будет')}</p>
+            <div class="chips" style="margin-top:10px">
+              <span class="chip">Цена: ${t.price ? `${Number(t.price).toLocaleString()} ${CONFIG.CURRENCY}` : '—'}</span>
+              ${t.duration ? `<span class='chip'>Длительность: ${escapeHtml(t.duration)}</span>`:''}
+              ${t.availableSeats!=null ? `<span class='chip'>Доступно мест: ${escapeHtml(String(t.availableSeats))}</span>`:''}
+              ${t.startDate ? `<span class='chip'>Старт: ${fmtDate(t.startDate)}</span>`:''}
+              ${t.endDate ? `<span class='chip'>Финиш: ${fmtDate(t.endDate)}</span>`:''}
+              <span class="chip">⭐ ${avg}</span>
+            </div>
+
+            <div class="section">
+              <h3 style="margin:0 0 8px">Добраться до места (Aviasales)</h3>
+              <div class="panel" style="background:rgba(124,92,255,.06)">
+                <p class="muted" style="margin-top:0">Для партнёрской ссылки подставьте свой ID ниже. Можно просто открыть главную Aviasales.</p>
+                <div class="toolbar">
+                  <input id="fromCity" class="input" placeholder="Откуда (город)" />
+                  <input id="toCity" class="input" placeholder="Куда (город/страна)" />
+                  <input id="dateFly" class="input" type="date" />
+                  <button class="btn" id="flyBtn">Найти билеты</button>
+                </div>
+                <div class="hint">Партнёр: <b>${CONFIG.AFFILIATE.PARTNER_ID}</b> • UTM: <code>${CONFIG.AFFILIATE.UTM}</code></div>
+              </div>
+            </div>
+          </div>
+
+          <aside class="panel">
+            <h3 style="margin-top:0">Отзывы</h3>
+            <div id="reviewsWrap">
+              ${(comments||[]).length ? comments.map(c=> ReviewItem(c)).join('') : `<div class='empty'>Пока нет отзывов — станьте первым!</div>`}
+            </div>
+            <hr style="border-color:rgba(255,255,255,.08);margin:16px 0" />
+            <h3 style="margin:0 0 8px">Оставить отзыв</h3>
+            <form id="reviewForm" class="section" onsubmit="return false">
+              <input required name="userName" class="input" placeholder="Ваше имя" />
+              <textarea required name="comment" class="input" style="min-height:90px" placeholder="Комментарий"></textarea>
+              <label class="hint">Оценка (1–5)</label>
+              <input required name="rate" class="input" type="number" min="1" max="5" value="5" />
+              <div style="display:flex;gap:10px;margin-top:10px">
+                <button class="btn success" type="submit">Отправить</button>
+                <button class="btn secondary" type="reset">Сбросить</button>
+              </div>
+              <div id="reviewMsg" class="hint" style="margin-top:8px"></div>
+            </form>
+          </aside>
+        </div>
+      </section>
+    `
+
+    // Aviasales link opener
+    document.getElementById('flyBtn').addEventListener('click', ()=>{
+      const from = encodeURIComponent(document.getElementById('fromCity').value.trim())
+      const to = encodeURIComponent(document.getElementById('toCity').value.trim())
+      const date = document.getElementById('dateFly').value // YYYY-MM-DD
+      const dateStr = date ? `&date=${encodeURIComponent(date)}` : ''
+      const base = CONFIG.AFFILIATE.URL
+      const utm = CONFIG.AFFILIATE.UTM ? (base.includes('?')? '&':'?') + CONFIG.AFFILIATE.UTM : ''
+      // Откроем партнёрскую главную, а параметры городов добавим как поисковый запрос (пользователь увидит поле поиска)
+      const url = `${base}${utm}`
+      window.open(url, '_blank')
+    })
+
+    // review form
+    const form = document.getElementById('reviewForm')
+    const msg = document.getElementById('reviewMsg')
+    form.addEventListener('submit', async ()=>{
+      msg.textContent = 'Отправка…'
+      const payload = Object.fromEntries(new FormData(form).entries())
+      payload.rate = Number(payload.rate)
+      try{
+        await apiFetch(`${CONFIG.RATES_BASE}/${encodeURIComponent(uid)}`,{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload)
+        })
+        msg.textContent = 'Спасибо! Отзыв отправлен.'
+        form.reset()
+        // перезагрузим блок отзывов
+        renderTour(uid)
+      }catch(e){
+        msg.textContent = 'Ошибка: ' + e.message
+      }
+    })
+
+  }catch(e){
+    app.innerHTML = `<div class='section'><div class='panel warning'>${escapeHtml(e.message)}</div></div>`
+  }
+}
+
+function ReviewItem(c){
+  const stars = '★'.repeat(Math.max(1, Math.min(5, Number(c.rate)||0)))
+  return `<div class='review'><div><b>${escapeHtml(c.userName||'Аноним')}</b> <span class='muted'>${stars}</span></div><div>${escapeHtml(c.comment||'')}</div></div>`
+}
+
+function renderAdmin(){
+  const app = document.getElementById('app')
+  app.innerHTML = `
+    <section class="section">
+      <div class="panel">
+        <h2 style="margin-top:0">Добавить тур</h2>
+        <form id="addForm" onsubmit="return false" enctype="multipart/form-data">
+          <div class="split">
+            <div>
+              <label class="hint">Название тура</label>
+              <input name="name" class="input" required placeholder="Напр.: Казбек — восхождение" />
+
+              <label class="hint">Описание</label>
+              <textarea name="description" class="input" style="min-height:120px" placeholder="Коротко о программе"></textarea>
+
+              <div class="toolbar">
+                <div style="flex:1">
+                  <label class="hint">Цена</label>
+                  <input name="price" class="input" type="number" min="0" placeholder="50000" />
+                </div>
+                <div style="flex:1">
+                  <label class="hint">Доступно мест</label>
+                  <input name="availableSeats" class="input" type="number" min="0" placeholder="12" />
+                </div>
+              </div>
+
+              <div class="toolbar">
+                <div style="flex:1">
+                  <label class="hint">Длительность</label>
+                  <input name="duration" class="input" placeholder="7 дней / 6 ночей" />
+                </div>
+                <div style="flex:1">
+                  <label class="hint">Отображать как хит (forSlide)</label>
+                  <select name="forSlide" class="input">
+                    <option value="false">Нет</option>
+                    <option value="true">Да</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="toolbar">
+                <div style="flex:1">
+                  <label class="hint">Дата начала</label>
+                  <input name="startDate" class="input" type="date" />
+                </div>
+                <div style="flex:1">
+                  <label class="hint">Дата окончания</label>
+                  <input name="endDate" class="input" type="date" />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label class="hint">Изображения (до 3 шт.)</label>
+              <input name="images" class="input" type="file" accept="image/*" multiple />
+              <div id="preview" class="gallery" style="margin-top:10px"></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:16px">
+            <button class="btn success" type="submit">Сохранить</button>
+            <button class="btn secondary" type="button" onclick="Router.go('/')">Отмена</button>
+          </div>
+          <div id="addMsg" class="hint" style="margin-top:8px"></div>
+        </form>
+      </div>
+    </section>
+  `
+
+  // превью изображений
+  const fileInput = document.querySelector('input[name="images"]')
+  const preview = document.getElementById('preview')
+  fileInput.addEventListener('change', ()=>{
+    preview.innerHTML = ''
+    const files = Array.from(fileInput.files||[]).slice(0,3)
+    files.forEach(f=>{
+      const url = URL.createObjectURL(f)
+      const img = document.createElement('img')
+      img.src = url
+      preview.appendChild(img)
+    })
+  })
+
+  // отправка формы
+  const form = document.getElementById('addForm')
+  const msg = document.getElementById('addMsg')
+  form.addEventListener('submit', async ()=>{
+    msg.textContent = 'Отправка…'
+    try{
+      const fd = new FormData(form)
+      // ограничим изображения тремя и корректными именами поля (multer ждёт fieldname "images")
+      const imgs = Array.from(fileInput.files||[]).slice(0,3)
+      fd.delete('images')
+      imgs.forEach(f=> fd.append('images', f))
+
+      // булево значение forSlide привести к строке 'true'/'false' — бэкенд примет как текст
+      // (sequelize boolean приведёт сам)
+
+      const res = await fetch(`${CONFIG.TOURS_BASE}/`, { method:'POST', body: fd })
+      if(!res.ok){ throw new Error(await res.text()) }
+      msg.textContent = 'Тур добавлен!'
+      setTimeout(()=> Router.go('/'), 600)
+    }catch(e){
+      msg.textContent = 'Ошибка: ' + (e.message||'')
+    }
+  })
+}
+
+function renderAbout(){
+  const app = document.getElementById('app')
+  app.innerHTML = `
+    <section class="section">
+      <div class="panel">
+        <h2 style="margin-top:0">О проекте</h2>
+        <p>Этот фронтенд — лёгкое SPA на чистых HTML/CSS/JS для вашего бэкенда на Express + Sequelize.</p>
+        <ul>
+          <li>Список туров → <code>GET {TOURS_BASE}/</code></li>
+          <li>Детали тура + отзывы → <code>GET {TOURS_BASE}/:uid</code> (ответ: <code>[tour, comments]</code>)</li>
+          <li>Добавление тура → <code>POST {TOURS_BASE}/</code> (multipart: <code>images[]</code> + поля формы)</li>
+          <li>Удаление тура → <code>DELETE {TOURS_BASE}/:uid</code></li>
+          <li>Добавить отзыв → <code>POST {RATES_BASE}/:uid</code> (JSON: <code>{ userName, comment, rate }</code>)</li>
+        </ul>
+        <p class="hint">Если видите ошибки CORS — включите <code>cors()</code> в Express: <code>import cors from 'cors'; app.use(cors())</code>.</p>
+        <h3>Aviasales (реклама/партнёрка)</h3>
+        <p>В этом шаблоне добавлена кнопка «Найти билеты». Замените <code>CONFIG.AFFILIATE.PARTNER_ID</code> и <code>CONFIG.AFFILIATE.URL</code> на ваш white‑label/партнёрский домен.</p>
+        <p class="muted">При желании можно внедрить виджет формы поиска Aviasales, если у вас есть скрипт и партнёрский ключ — вставьте его сюда, в раздел «Добраться до места» на странице тура.</p>
+        <h3>Как запустить</h3>
+        <ol>
+          <li>Сохраните этот файл как <code>index.html</code>.</li>
+          <li>Откройте его в браузере или сервите статикой через <code>serve</code> / <code>nginx</code>.</li>
+          <li>Отредактируйте <code>CONFIG.TOURS_BASE</code> и <code>CONFIG.RATES_BASE</code> под ваши mount-пути.</li>
+        </ol>
+      </div>
+    </section>
+  `.replace('{TOURS_BASE}', CONFIG.TOURS_BASE)
+   .replace('{RATES_BASE}', CONFIG.RATES_BASE)
+}
+
+// =========================
+// 🔧 Утилиты
+// =========================
+function fmtDate(d){
+  try{ return new Date(d).toLocaleDateString('ru-RU') }catch{ return d }
+}
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, s=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[s]))
+}
+function debounce(fn, ms){
+  let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms) }
+}
+function placeholder(){
+  // простая заглушка-градиент
+  const svg = encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='800' height='500'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop stop-color='%237c5cff' offset='0'/><stop stop-color='%233bd9d9' offset='1'/></linearGradient></defs><rect width='100%' height='100%' fill='url(%23g)'/><text x='50%' y='52%' font-family='Verdana' font-size='36' fill='white' text-anchor='middle'>TravelLab</text></svg>`)
+  return `data:image/svg+xml;utf8,${svg}`
+}
+
+// Запуск
+Router.init()
+</script>
+</body>
+</html>
