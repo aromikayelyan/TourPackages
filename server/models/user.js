@@ -1,9 +1,9 @@
 import Sequelize from "sequelize"
 import sequelize from "../utils/db.js"
 
-// Модель оценок (rates)
-const rate = sequelize.define(
-    "Rate",
+// Модель пользователей (users)
+const user = sequelize.define(
+    "User",
     {
         id: {
             primaryKey: true,
@@ -11,27 +11,24 @@ const rate = sequelize.define(
             allowNull: false,
             type: Sequelize.INTEGER,
         },
-        // логическая FK на packages.uid (без ограничения в БД)
-        packageId: {
+        Username: {
             type: Sequelize.STRING,
             allowNull: false,
         },
-        userName: {
+        // логический UID (строка)
+        userUId: {
+            type: Sequelize.STRING,
+            allowNull: false,
+            unique: true, // чтобы внешние ключи могли на него ссылаться
+        },
+        password: {
             type: Sequelize.STRING,
             allowNull: false,
         },
-        // логическая FK на users.userUId (без ограничения в БД)
-        userId: {
+        // по смыслу лучше varchar
+        email: {
             type: Sequelize.STRING,
             allowNull: true,
-        },
-        comment: {
-            type: Sequelize.STRING,
-            allowNull: true,
-        },
-        rate: {
-            type: Sequelize.INTEGER,
-            allowNull: false,
         },
         created_at: {
             type: Sequelize.DATE,
@@ -43,9 +40,17 @@ const rate = sequelize.define(
         },
     },
     {
-        tableName: "rates",
+        tableName: "users",
         timestamps: false,
+        indexes: [
+            {
+                unique: true,
+                fields: ["userUId"],
+            },
+        ],
     }
 )
 
-export default rate
+export default user
+
+

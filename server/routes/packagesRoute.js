@@ -22,6 +22,28 @@ var storage = multer.diskStorage({
 
 const upload = multer({ storage })
 
+// туры конкретного пользователя по его userUId
+router.get('/user/:uid', async (req, res) => {
+	try {
+		const packages = await tourModel.findAll({ where: { creatorUserUId: req.params.uid } })
+
+		const packs = packages.map(pack => {
+			const images = pack.dataValues.images
+				? JSON.parse(pack.dataValues.images).map(
+					image => `${req.protocol}://${req.get('host')}/uploads/${image}`
+				)
+				: []
+			pack.dataValues.images = images
+			return pack.dataValues
+		})
+
+		return res.status(200).json(packs)
+	} catch (e) {
+		console.error(e)
+		res.status(500).json({ message: 'Error, try again' })
+	}
+})
+
 router.get('/:id', async (req, res) => {
 	try {
 		const response = await tourModel.findOne({ where: { uid: req.params.id } })
@@ -46,9 +68,11 @@ router.get('/', async (req, res) => {
 		const packages = await tourModel.findAll()
 
 		const packs = packages.map(pack => {
-			const images = JSON.parse(pack.dataValues.images).map(
-				image => `${req.protocol}://${req.get('host')}/uploads/${image}`
-			)
+			const images = pack.dataValues.images
+				? JSON.parse(pack.dataValues.images).map(
+					image => `${req.protocol}://${req.get('host')}/uploads/${image}`
+				)
+				: []
 			pack.dataValues.images = images
 			return pack.dataValues
 		})
@@ -64,7 +88,7 @@ router.get('/', async (req, res) => {
 router.post('/', upload.array('images', 3), async (req, res) => {
 	try {
 
-		const images = req.files.map(file => file.filename)
+		const images = req.files ? req.files.map(file => file.filename) : []
 
 		const tourPackage = await tourModel.create({
 			uid: uuidv4(),
@@ -74,6 +98,7 @@ router.post('/', upload.array('images', 3), async (req, res) => {
 			availableSeats: req.body.availableSeats,
 			duration: req.body.duration,
 			forSlide: req.body.forSlide,
+			creatorUserUId: req.body.creatorUserUId || null,
 			images: JSON.stringify(images),
 			startDate: req.body.startDate,
 			endDate: req.body.endDate

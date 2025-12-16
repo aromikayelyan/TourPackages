@@ -8,6 +8,9 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 import packageRoute from './routes/packagesRoute.js'
 import rateSystem from './routes/rateSystem.js'
+import usersRoute from './routes/usersRoute.js'
+import chatRoute from './routes/chatRoute.js'
+import cartRoute from './routes/cartRoute.js'
  
 
 // const upload = multer({ dest: 'uploads/' })
@@ -38,6 +41,9 @@ app.use(cors({
 app.use(express.json())
 app.use('/packages', packageRoute)
 app.use('/rating', rateSystem)
+app.use('/users', usersRoute)
+app.use('/chats', chatRoute)
+app.use('/carts', cartRoute)
 
 app.use(express.urlencoded({ extended: true }))
 
@@ -52,7 +58,7 @@ app.use(express.urlencoded({ extended: true }))
   
 async function start() {
 	try {
-		await sequelize.sync()
+		// await sequelize.sync({ force: true })
 		app.listen(PORT, () => {
 			console.log(`server run on port ${PORT}`)
 		})
