@@ -1,0 +1,29 @@
+[
+  {
+    "id": 1,
+    "Username": "ivan_dev",
+    "userUId": "usr_9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+    "password": "$2b$10$X7z8h7Y6G5f4e3d2c1b0aOuGhJkLmNoPqRsTuVwXxYyZz12345678",
+    "email": "ivan@example.com",
+    "created_at": "2026-05-20T10:00:00.000Z",
+    "updated_at": "2026-05-20T10:00:00.000Z"
+  },
+  {
+    "id": 2,
+    "Username": "elena_smith",
+    "userUId": "usr_1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+    "password": "$2b$10$Y7z8h7Y6G5f4e3d2c1b0aOuGhJkLmNoPqRsTuVwXxYyZz87654321",
+    "email": "elena@example.com",
+    "created_at": "2026-05-22T14:30:00.000Z",
+    "updated_at": "2026-05-23T09:15:00.000Z"
+  },
+  {
+    "id": 3,
+    "Username": "alex_manager",
+    "userUId": "usr_8f7e6d5c-4b3a-2f1e-0d9c-8b7a6f5e4d3c",
+    "password": "$2b$10$Z7z8h7Y6G5f4e3d2c1b0aOuGhJkLmNoPqRsTuVwXxYyZz00000000",
+    "email": "alex@example.com",
+    "created_at": "2026-05-25T11:00:00.000Z",
+    "updated_at": "2026-05-25T11:00:00.000Z"
+  }
+]

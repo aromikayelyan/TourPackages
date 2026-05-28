@@ -10,28 +10,36 @@ function CartPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  // Получаем UID универсально, чтобы поддерживать и старых, и новых юзеров
+  const currentUid = user?.userUId || user?.uid;
+
   useEffect(() => {
-    if (!user?.userUId) {
+    if (!currentUid) {
       setLoading(false)
       return
     }
     loadCart()
-  }, [user])
+  }, [currentUid]) // Следим за изменением вычисленного UID
 
   const loadCart = async () => {
-    if (!user?.userUId) return
+    if (!currentUid) return
     setLoading(true)
     setError('')
     try {
-      const res = await fetchCart(user.userUId)
+      const res = await fetchCart(currentUid)
       setCart(res.data)
-      // загружаем информацию о турах
-      const tourUids = Array.isArray(res.data.products) ? res.data.products : []
+      
+      // Загружаем информацию о турах
+      const tourUids = Array.isArray(res.data?.products) ? res.data.products : []
       const toursData = await Promise.all(
         tourUids.map(async (uid) => {
           try {
             const tourRes = await fetchTourByUid(uid)
-            return tourRes.data[0] // первый элемент - данные тура
+            
+            // Защита: наш гибридный ответ из api.js поддерживает и tourRes.data[0],
+            // и прямую отдачу tourRes.data. Но на случай, если прилетел чистый объект,
+            // подстрахуемся оператором `|| tourRes.data`
+            return tourRes.data[0] || tourRes.data
           } catch (e) {
             console.error(`Failed to load tour ${uid}`, e)
             return null
@@ -48,11 +56,13 @@ function CartPage() {
   }
 
   const handleRemove = async (tourUid) => {
-    if (!user?.userUId || !cart) return
+    if (!currentUid || !cart) return
     try {
-      const updatedProducts = cart.products.filter((uid) => uid !== tourUid)
-      await updateCart(user.userUId, updatedProducts)
-      await loadCart() // перезагружаем корзину
+      const productsList = Array.isArray(cart.products) ? cart.products : []
+      const updatedProducts = productsList.filter((uid) => uid !== tourUid)
+      
+      await updateCart(currentUid, updatedProducts)
+      await loadCart() // Перезагружаем корзину для обновления стейта
     } catch (e) {
       console.error(e)
       setError('Failed to remove item')
@@ -92,29 +102,41 @@ function CartPage() {
       ) : (
         <>
           <div className="cart-items">
-            {cartTours.map((tour) => (
-              <div key={tour.uid} className="cart-item">
-                {Array.isArray(tour.images) && tour.images[0] && (
-                  <img src={tour.images[0]} alt={tour.name} className="cart-item-image" />
-                )}
-                <div className="cart-item-info">
-                  <h3>{tour.name}</h3>
-                  <p className="price">{tour.price} $</p>
-                  <p className="cart-item-desc">{tour.description}</p>
-                  <div className="cart-item-actions">
-                    <Link to={`/tours/${tour.uid}`} className="btn">
-                      View Details
-                    </Link>
-                    <button
-                      className="btn btn-remove"
-                      onClick={() => handleRemove(tour.uid)}
-                    >
-                      Remove
-                    </button>
+            {cartTours.map((tour) => {
+              // Безопасно вытаскиваем первую картинку, даже если это массив или строка
+              let displayImage = "";
+              if (Array.isArray(tour.images) && tour.images.length > 0) {
+                displayImage = tour.images[0];
+              } else if (typeof tour.images === 'string') {
+                displayImage = tour.images;
+              } else {
+                displayImage = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e";
+              }
+
+              return (
+                <div key={tour.uid} className="cart-item">
+                  {displayImage && (
+                    <img src={displayImage} alt={tour.name} className="cart-item-image" />
+                  )}
+                  <div className="cart-item-info">
+                    <h3>{tour.name}</h3>
+                    <p className="price">{tour.price} $</p>
+                    <p className="cart-item-desc">{tour.description}</p>
+                    <div className="cart-item-actions">
+                      <Link to={`/tours/${tour.uid}`} className="btn">
+                        View Details
+                      </Link>
+                      <button
+                        className="btn btn-remove"
+                        onClick={() => handleRemove(tour.uid)}
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <div className="cart-summary">
             <h2>Cart Summary</h2>
@@ -123,7 +145,7 @@ function CartPage() {
             </p>
             <p>
               <strong>Total price:</strong>{' '}
-              {cartTours.reduce((sum, tour) => sum + (tour.price || 0), 0)} $
+              {cartTours.reduce((sum, tour) => sum + (Number(tour.price) || 0), 0)} $
             </p>
           </div>
         </>
@@ -133,5 +155,3 @@ function CartPage() {
 }
 
 export default CartPage
-
-

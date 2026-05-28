@@ -17,20 +17,30 @@ function AuthPage() {
     setForm((prev) => ({ ...prev, [name]: value }))
   }
 
+  // Очищаем ошибки и форму при смене режима
+  const handleModeChange = (newMode) => {
+    setMode(newMode)
+    setError('')
+    setForm({ Username: '', email: '', password: '' })
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     try {
       if (mode === 'login') {
         const res = await loginUser({ email: form.email, password: form.password })
+        // loginUser возвращает { data: { user, token } }
         setUser(res.data.user)
       } else {
         const res = await registerUser(form)
-        setUser(res.data.user)
+        // registerUser возвращает { data: newUser }
+        // Берем напрямую res.data, так как там лежит созданный юзер
+        setUser(res.data)
       }
     } catch (err) {
       console.error(err)
-      setError(err.response?.data?.message || 'Request failed')
+      setError(err.response?.data?.message || err.message || 'Request failed')
     }
   }
 
@@ -40,13 +50,13 @@ function AuthPage() {
       <div className="auth-toggle">
         <button
           className={mode === 'login' ? 'btn primary' : 'btn secondary'}
-          onClick={() => setMode('login')}
+          onClick={() => handleModeChange('login')}
         >
           Sign in
         </button>
         <button
           className={mode === 'register' ? 'btn primary' : 'btn secondary'}
-          onClick={() => setMode('register')}
+          onClick={() => handleModeChange('register')}
         >
           Sign up
         </button>
@@ -90,12 +100,8 @@ function AuthPage() {
       </form>
 
       {error && <p className="error">{error}</p>}
-
-      {/* user preview теперь в ProfilePage */}
     </div>
   )
 }
 
 export default AuthPage
-
-

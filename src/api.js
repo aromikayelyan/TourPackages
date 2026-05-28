@@ -1,51 +1,132 @@
-import packagesMockData from "../data.json" // Твои фейковые туры из предыдущего шага
+import packagesMockData from "../data.json" 
+import usersMockData from "../database/users.json" 
+import cartsMockData from "../database/cart.json"
+import chatsMockData from "../database/chat.json"
+import ratingsMockData from "../database/rates.json"
 
-// Инициализируем "Базу данных" в localStorage, чтобы данные сохранялись при перезагрузке страницы
+// ==================== ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ ====================
 const initLocalStorage = () => {
-  // Достаем то, что лежит в localStorage сейчас
   const currentLocalPackages = JSON.parse(localStorage.getItem("packages"));
 
-  // Если в памяти вообще ничего нет ИЛИ длина массива в файле изменилась
+  // 1. Инициализация туров
   if (!currentLocalPackages || currentLocalPackages.length !== packagesMockData.length) {
     localStorage.setItem("packages", JSON.stringify(packagesMockData));
   }
 
-  // Остальная твоя инициализация остается без изменений
+  // 2. Инициализация пользователей
   if (!localStorage.getItem("users")) {
-    localStorage.setItem("users", JSON.stringify([
-      { uid: "usr-agency-alpha", email: "alpha@test.com", password: "123" }
-    ]))
+    localStorage.setItem("users", JSON.stringify(usersMockData || []));
   }
+
+  // 3. Инициализация корзин
   if (!localStorage.getItem("carts")) {
-    localStorage.setItem("carts", JSON.stringify({}))
+    let initialCarts = {};
+    if (Array.isArray(cartsMockData)) {
+      cartsMockData.forEach(c => {
+        const uid = c.useruid || c.userUid || c.userId;
+        let prods = c.products || [];
+        if (typeof prods === 'string') {
+          try { prods = JSON.parse(prods); } catch(e) { prods = []; }
+        }
+        if (uid) initialCarts[uid] = { products: prods };
+      });
+    } else {
+      initialCarts = cartsMockData || {};
+    }
+    localStorage.setItem("carts", JSON.stringify(initialCarts));
   }
+
+  // 4. Инициализация чатов
   if (!localStorage.getItem("chats")) {
-    localStorage.setItem("chats", JSON.stringify([]))
+    localStorage.setItem("chats", JSON.stringify(chatsMockData || []));
   }
+
+  // 5. Инициализация рейтингов
   if (!localStorage.getItem("ratings")) {
-    localStorage.setItem("ratings", JSON.stringify({}))
+    let initialRatings = {};
+    if (Array.isArray(ratingsMockData)) {
+      ratingsMockData.forEach(r => {
+        if (!initialRatings[r.packageId]) initialRatings[r.packageId] = [];
+        ratingsMockData.push(r);
+      });
+    } else {
+      initialRatings = ratingsMockData || {};
+    }
+    localStorage.setItem("ratings", JSON.stringify(initialRatings));
   }
 }
+
 initLocalStorage()
 
-// Хелперы для быстрого чтения/записи в localStorage
+// Хелперы чтения/записи
 const getDB = (key) => JSON.parse(localStorage.getItem(key))
 const saveDB = (key, data) => localStorage.setItem(key, JSON.stringify(data))
 
-// Имитируем задержку сети для реалистичности (опционально)
+// Имитация задержки ответа сервера
 const mockDelay = (data) => new Promise((resolve) => setTimeout(() => resolve({ data }), 300))
+
 
 // ==================== API FUNCTIONS ====================
 
 // 1. ТУРЫ (PACKAGES)
 export const fetchTours = () => {
-  return mockDelay(getDB("packages"))
+  const tours = getDB("packages") || []
+  
+  const fixedTours = tours.map(t => {
+    let normalizedImages = [];
+    
+    // Перехватываем строку с запятыми и превращаем её в массив
+    if (typeof t.images === 'string') {
+      normalizedImages = t.images.split(',').map(img => img.trim());
+    } else if (Array.isArray(t.images)) {
+      normalizedImages = t.images;
+    } else if (typeof t.image === 'string') {
+      normalizedImages = t.image.split(',').map(img => img.trim());
+    } else {
+      normalizedImages = ["https://images.unsplash.com/photo-1507525428034-b723cf961d3e"];
+    }
+
+    return {
+      ...t,
+      images: normalizedImages
+    }
+  })
+  
+  return mockDelay(fixedTours)
 }
 
 export const fetchTourByUid = (uid) => {
-  const tours = getDB("packages")
+  const tours = getDB("packages") || []
   const tour = tours.find((p) => p.uid === uid)
-  return mockDelay(tour || null)
+  
+  if (!tour) return mockDelay(null) // Если не найден, возвращаем null
+
+  const copyTour = { ...tour }
+  let normalizedImages = [];
+
+  // Разбиваем строку с запятыми на массив ссылок
+  if (typeof copyTour.images === 'string') {
+    normalizedImages = copyTour.images.split(',').map(img => img.trim());
+  } else if (Array.isArray(copyTour.images)) {
+    normalizedImages = copyTour.images;
+  } else if (typeof copyTour.image === 'string') {
+    normalizedImages = copyTour.image.split(',').map(img => img.trim());
+  } else {
+    normalizedImages = ["https://images.unsplash.com/photo-1507525428034-b723cf961d3e"];
+  }
+
+  copyTour.images = normalizedImages;
+
+  // ХИТРЫЙ ТРЮК ДЛЯ СОВМЕСТИМОСТИ:
+  // Мы делаем так, чтобы copyTour вел себя как ОБЪЕКТ для отдельной страницы,
+  // но если корзина CartPage обратится к нему по индексу [0], он вернет сам себя!
+  Object.defineProperty(copyTour, '0', {
+    value: copyTour,
+    enumerable: false // Чтобы не зациклить объект при чтении полей
+  });
+
+  // Возвращаем объект (который прикидывается массивом, если его попросит корзина)
+  return mockDelay(copyTour)
 }
 
 export const fetchToursByUser = (userUId) => {
@@ -56,14 +137,12 @@ export const fetchToursByUser = (userUId) => {
 
 export const createTour = (formData) => {
   const tours = getDB("packages")
-  
-  // Так как бэкенда нет, FormData нужно превратить в обычный объект
   const newTour = {}
+  
   formData.forEach((value, key) => {
     newTour[key] = value
   })
 
-  // Заполняем дефолтные поля
   newTour.id = tours.length + 1
   newTour.uid = `pkg-${Date.now()}`
   newTour.price = Number(newTour.price) || 0
@@ -72,11 +151,11 @@ export const createTour = (formData) => {
   newTour.created_at = new Date().toISOString()
   newTour.updated_at = new Date().toISOString()
 
-  // Если была загружена картинка, превращаем её в мок-ссылку
+  // Сохраняем картинку строкой, как у вас и было в оригинальном коде
   if (newTour.images && newTour.images instanceof File) {
     newTour.images = URL.createObjectURL(newTour.images) 
   } else {
-    newTour.images = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e" // дефолт
+    newTour.images = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e"
   }
 
   tours.push(newTour)
@@ -84,7 +163,13 @@ export const createTour = (formData) => {
   return mockDelay(newTour)
 }
 
-// 2. РЕЙТИНГИ
+
+// 2. РЕЙТИНГИ / ОТЗЫВЫ (RATES)
+export const fetchRatingsByPackage = (packageId) => {
+  const ratings = getDB("ratings")
+  return mockDelay(ratings[packageId] || [])
+}
+
 export const createRating = (uid, data) => {
   const ratings = getDB("ratings")
   if (!ratings[uid]) ratings[uid] = []
@@ -96,7 +181,8 @@ export const createRating = (uid, data) => {
   return mockDelay(newRating)
 }
 
-// 3. ПОЛЬЗОВАТЕЛИ (AUTH)
+
+// 3. ПОЛЬЗОВАТЕЛИ & АВТОРИЗАЦИЯ (USERS / AUTH)
 export const registerUser = (data) => {
   const users = getDB("users")
   const userExists = users.some((u) => u.email === data.email)
@@ -127,21 +213,18 @@ export const loginUser = (data) => {
   return mockDelay({ user, token: "mock-jwt-token" })
 }
 
+
 // 4. КОРЗИНА (CART)
 export const fetchCart = (useruid) => {
   const carts = getDB("carts")
-  // Если корзины нет, возвращаем пустую структуру
   const userCart = carts[useruid] || { products: [] }
   return mockDelay(userCart)
 }
 
 export const updateCart = (useruid, products) => {
-  console.log('Updating local cart for user:', useruid, 'with products:', products)
   const carts = getDB("carts")
-  
   carts[useruid] = { products }
   saveDB("carts", carts)
-  
   return mockDelay(carts[useruid])
 }
 
@@ -178,7 +261,8 @@ export const addToCart = async (useruid, tourUid) => {
   }
 }
 
-// 5. ЧАТЫ
+
+// 5. ЧАТЫ (CHATS)
 export const fetchChats = () => {
   return mockDelay(getDB("chats"))
 }
@@ -203,6 +287,5 @@ export const createChat = (user1id, user2id) => {
   return mockDelay(newChat)
 }
 
-// Экспортируем пустой объект-заглушку вместо axios-инстанса, чтобы не ломать импорты
 const api = {}
 export default api

@@ -11,7 +11,9 @@ function ChatsPage() {
   const [creatingChat, setCreatingChat] = useState(false)
 
   useEffect(() => {
-    if (user?.userUId) {
+    // В некоторых контекстах поле может называться userUId, в других uid. Делаем универсально:
+    const currentUid = user?.userUId || user?.uid;
+    if (currentUid) {
       loadChats()
     } else {
       setLoading(false)
@@ -19,12 +21,14 @@ function ChatsPage() {
   }, [user])
 
   const loadChats = async () => {
-    if (!user?.userUId) return
+    const currentUid = user?.userUId || user?.uid;
+    if (!currentUid) return
     setLoading(true)
     setError('')
     try {
-      const res = await fetchUserChats(user.userUId)
-      setChats(res.data)
+      const res = await fetchUserChats(currentUid)
+      // Наш мок всегда возвращает { data: [...] }
+      setChats(res.data || [])
     } catch (e) {
       console.error(e)
       setError('Failed to load chats')
@@ -35,32 +39,43 @@ function ChatsPage() {
 
   const handleCreateChat = async (e) => {
     e.preventDefault()
-    if (!user?.userUId) {
+    const currentUid = user?.userUId || user?.uid;
+
+    if (!currentUid) {
       alert('Please sign in to create a chat')
       return
     }
-    if (!otherUserId.trim()) {
+    
+    const targetUid = otherUserId.trim()
+    if (!targetUid) {
       alert('Please enter a user ID')
       return
     }
-    if (user.userUId === otherUserId.trim()) {
+    if (currentUid === targetUid) {
       alert('Cannot create chat with yourself')
       return
     }
+
     setCreatingChat(true)
     try {
-      await createChat(user.userUId, otherUserId.trim())
+      const res = await createChat(currentUid, targetUid)
+      
+      // Наш api.js возвращает уже существующий чат вместо генерации ошибки.
+      // Проверим, был ли этот чат у нас в списке ранее:
+      const chatExists = chats.some(c => c.id === res.data?.id || c.uid === res.data?.uid)
+      
+      if (chatExists) {
+        alert('Chat already exists in your list!')
+      } else {
+        alert('Chat successfully started!')
+      }
+
       setOtherUserId('')
-      await loadChats()
+      await loadChats() // Перезагружаем список чатов
     } catch (e) {
       console.error(e)
       const errorMsg = e.response?.data?.message || e.message || 'Failed to create chat'
-      if (errorMsg.includes('already exists')) {
-        alert('Chat already exists!')
-        await loadChats()
-      } else {
-        alert(errorMsg)
-      }
+      alert(errorMsg)
     } finally {
       setCreatingChat(false)
     }
@@ -78,6 +93,9 @@ function ChatsPage() {
   if (loading) return <div className="page"><h1>Chats</h1><p>Loading chats...</p></div>
   if (error) return <div className="page"><h1>Chats</h1><p className="error">{error}</p></div>
 
+  // Вытаскиваем uid текущего пользователя для безопасного сравнения в рендере
+  const myUid = user.userUId || user.uid;
+
   return (
     <div className="page">
       <h1>Your Chats</h1>
@@ -91,7 +109,7 @@ function ChatsPage() {
               type="text"
               value={otherUserId}
               onChange={(e) => setOtherUserId(e.target.value)}
-              placeholder="Enter user UID"
+              placeholder="Enter user UID (e.g. usr-agency-alpha)"
               required
             />
           </label>
@@ -108,11 +126,12 @@ function ChatsPage() {
         ) : (
           <ul className="list">
             {chats.map((c) => {
-              const otherUser = c.user1id === user.userUId ? c.uuser2id : c.user1id
+              // Сверяем с myUid, чтобы точно определить ID собеседника
+              const otherUser = c.user1id === myUid ? c.uuser2id : c.user1id
               return (
-                <li key={c.id} className="list-item chat-item">
+                <li key={c.id || c.uid} className="list-item chat-item" style={{ padding: '10px', borderBottom: '1px solid #ccc' }}>
                   <div className="chat-item-info">
-                    <strong>Chat with:</strong> {otherUser}
+                    <strong>Chat with:</strong> <span style={{ color: '#007bff' }}>{otherUser}</span>
                     <br />
                     <small>Created: {c.created_at ? new Date(c.created_at).toLocaleDateString() : 'N/A'}</small>
                   </div>
@@ -127,5 +146,3 @@ function ChatsPage() {
 }
 
 export default ChatsPage
-
-
