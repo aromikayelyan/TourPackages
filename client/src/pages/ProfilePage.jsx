@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../AuthContext.jsx'
 import { fetchToursByUser, fetchCart, fetchTourByUid } from '../api.js'
 import { Link } from 'react-router-dom'
+import { deleteTour } from './path-to-your-api' // Укажите правильный путь к api.js
+
+
 
 function ProfilePage() {
   const { user, setUser } = useAuth()
@@ -31,6 +34,22 @@ function ProfilePage() {
       setLoading(false)
     }
   }
+  // Внутри вашего компонента:
+const handleDelete = async (uid) => {
+  if (window.confirm('Вы уверены, что хотите удалить этот тур?')) {
+    try {
+      await deleteTour(uid)
+      
+      // Обновляем локальный стейт, чтобы тур исчез из интерфейса
+      setTours(prevTours => prevTours.filter(tour => tour.uid !== uid))
+      
+      alert('Тур успешно удален')
+    } catch (err) {
+      console.error(err)
+      alert(err.response?.data?.message || 'Не удалось удалить тур')
+    }
+  }
+}
 
   const loadCart = async () => {
     if (!user?.userUId) return
@@ -104,6 +123,42 @@ function ProfilePage() {
           ))}
         </div>
       </section>
+
+      <section className="section">
+  <h2>Your tours & events</h2>
+  {loading && <p>Loading your tours...</p>}
+  {error && <p className="error">{error}</p>}
+  {!loading && tours.length === 0 && <p>You have not created any tours yet.</p>}
+  
+  <div className="grid">
+    {tours.map((tour) => (
+      <div key={tour.uid} className="card">
+        {Array.isArray(tour.images) && tour.images[0] && (
+          <img src={tour.images[0]} alt={tour.name} className="card-image" />
+        )}
+        <h3>{tour.name}</h3>
+        <p className="price">{tour.price} $</p>
+        <p>{tour.description}</p>
+        
+        <div className="card-actions" style={{ display: 'flex', gap: '10px', marginTop: 'auto' }}>
+          <Link to={`/tours/${tour.uid}`} className="btn">
+            Open details
+          </Link>
+          
+          {/* Кнопка удаления */}
+          <button 
+            onClick={() => handleDelete(tour.uid)} 
+            className="btn btn-delete"
+            style={{ backgroundColor: '#ff4d4f', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer' }}
+          >
+            Delete
+          </button>
+        </div>
+
+      </div>
+    ))}
+  </div>
+</section>
 
       <section className="section">
         <h2>Your Cart</h2>

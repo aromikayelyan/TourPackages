@@ -16,6 +16,8 @@ export const createRating = (uid, data) => api.post(`/rating/${uid}`, data)
 
 export const registerUser = (data) => api.post('/users/register', data)
 export const loginUser = (data) => api.post('/users/login', data)
+// Добавьте это к остальным экспортам в вашем файле api.js
+export const deleteTour = (uid) => api.delete(`/packages/${uid}`)
 
 export const fetchCart = (useruid) => api.get(`/carts/user/${useruid}`)
 export const updateCart = (useruid, products) => {
