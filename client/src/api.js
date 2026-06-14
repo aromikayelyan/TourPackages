@@ -37,6 +37,7 @@ export const addToCart = async (useruid, tourUid) => {
       } else if (typeof cartRes.data.products === 'string') {
         try {
           currentProducts = JSON.parse(cartRes.data.products)
+        // eslint-disable-next-line no-unused-vars
         } catch (e) {
           currentProducts = []
         }
@@ -65,6 +66,7 @@ export const addToCart = async (useruid, tourUid) => {
   }
 }
 
+export const getUserById = (userUId) => api.get(`/users/${userUId}`)
 export const fetchChats = () => api.get('/chats')
 export const fetchUserChats = (userUId) => api.get(`/chats/user/${userUId}`)
 export const createChat = (user1id, user2id) => api.post('/chats', { user1id, uuser2id: user2id })

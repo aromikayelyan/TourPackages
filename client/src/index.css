@@ -15,6 +15,9 @@
   box-sizing: border-box;
 }
 
+
+
+
 body {
   margin: 0;
   min-width: 320px;
@@ -156,6 +159,12 @@ img {
   border-radius: 0.75rem;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
+}
+
+.hero-title {
+  color: #000000;
+  font-size: 1.8rem;
+  margin: 0 0 0.25rem;
 }
 
 .hero-content h1 {

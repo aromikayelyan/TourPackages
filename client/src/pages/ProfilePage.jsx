@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../AuthContext.jsx'
-import { fetchToursByUser, fetchCart, fetchTourByUid } from '../api.js'
+import { fetchToursByUser, fetchCart, fetchTourByUid, deleteTour } from '../api.js'
 import { Link } from 'react-router-dom'
-import { deleteTour } from './path-to-your-api' // Укажите правильный путь к api.js
 
 
 
@@ -102,7 +101,7 @@ const handleDelete = async (uid) => {
         </button>
       </div>
 
-      <section className="section">
+      {/* <section className="section">
         <h2>Your tours & events</h2>
         {loading && <p>Loading your tours...</p>}
         {error && <p className="error">{error}</p>}
@@ -122,7 +121,7 @@ const handleDelete = async (uid) => {
             </div>
           ))}
         </div>
-      </section>
+      </section> */}
 
       <section className="section">
   <h2>Your tours & events</h2>

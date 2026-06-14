@@ -52,7 +52,7 @@ app.use(express.urlencoded({ extended: true }))
 
 
 
-// app.use('/uploads', express.static(path.join(__dirname, 'uploads')))             --------------do not work------------- 
+// app.use('/uploads', express.static(path.join(__dirname, 'uploads')))             --------------dont work------------- 
 
 
   
